@@ -1,3 +1,7 @@
+variable "domain_name" {
+  type = string
+}
+
 variable "deployment_name" {
   type    = string
   default = "humio"
