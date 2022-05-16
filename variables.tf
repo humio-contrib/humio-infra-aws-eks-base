@@ -2,6 +2,11 @@ variable "domain_name" {
   type = string
 }
 
+variable "domain_is_private" {
+  type    = bool
+  default = false
+}
+
 variable "deployment_name" {
   type    = string
   default = "humio"
