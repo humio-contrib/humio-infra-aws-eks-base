@@ -3,6 +3,10 @@ variable "deployment_name" {
   default = "humio"
 }
 
+variable "humio_instance_count" {
+  type    = number
+  default = 3
+}
 variable "humio_instance_type" {
   type    = string
   default = "i3.large" # Instance should have local NVME

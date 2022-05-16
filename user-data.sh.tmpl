@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -eu
+
+declare -r mount_path=/mnt/disks/vol1
+declare -r disks=($(find /dev/disk/by-id -iname 'nvme-Amazon_EC2_NVMe_Instance_Storage_*-ns-*'))
+
+mount_disk() {
+  local -r device=$1
+  local -r path=$2
+
+  if ! [ -d $path ]; then
+    mkdir -p $path
+  fi
+  mount -t ext4 $device $path
+}
+
+if [ "$${#disks[@]}" -eq "1" ]; then
+  mkfs -t ext4 $disks \
+    && mount_disk $disks $mount_path
+fi
+
+if [ "$${#disks[@]}" -gt "1" ]; then
+  yum install -y mdadm
+  mdadm --create --verbose /dev/md0 --level=0 --raid-devices=$${#disks[@]} $${disks[@]}
+  if [ "$(blkid /dev/md0)" == "" ]; then
+    mkfs -t ext4 /dev/md0 \
+      && mount_disk /dev/md0 $mount_path
+  fi
+fi
+
+# We use the kubelet flag --protect-kernel-defaults=true, this requires us to modify kernel parameters:
+cat > /etc/sysctl.d/90-kubelet.conf << EOF
+vm.overcommit_memory=1
+kernel.panic=10
+kernel.panic_on_oops=1
+EOF
+sysctl -p /etc/sysctl.d/90-kubelet.conf
+
+# Set up permissions for humio directories
+if [ -d ${humio_data_dir} ]; then
+  chown ${humio_data_dir_owner_uuid}:${humio_data_dir_owner_uuid} ${humio_data_dir}
+fi
