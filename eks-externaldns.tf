@@ -72,5 +72,10 @@ resource "helm_release" "edns" {
     value = module.iam_assumable_role_edns.iam_role_arn
     type  = "string"
   }
+  set {
+    name  = "txtOwnerId"
+    value = var.deployment_name
+    type  = "string"
+  }
 }
 
