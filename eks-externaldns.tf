@@ -56,7 +56,7 @@ resource "helm_release" "edns" {
   namespace        = "external-dns"
   repository       = "https://charts.bitnami.com/bitnami"
   chart            = "external-dns"
-  version          = "6.3.0"
+  version          = "6.4.0"
   create_namespace = true
 
   set {
