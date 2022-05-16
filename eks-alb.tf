@@ -3,15 +3,10 @@ module "iam_assumable_role_alb" {
   version                       = "4.24.0"
   create_role                   = true
   role_name                     = "${local.cluster_name}-alb"
-  provider_url                  = replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")
+  provider_url                  = replace(module.eks.identity[0].oidc[0].issuer, "https://", "")
   role_policy_arns              = [aws_iam_policy.alb.arn, aws_iam_policy.alb-rp.arn]
   oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
 }
-
-data "aws_vpc" "eks" {
-  id = data.aws_eks_cluster.eks.vpc_config[0].vpc_id
-}
-
 
 resource "aws_iam_policy" "alb" {
   name        = "${local.cluster_name}-alb"
@@ -30,7 +25,7 @@ resource "aws_iam_policy" "alb" {
       "Resource": "*",
       "Condition": {
         "ArnEquals": {
-              "ec2:Vpc": "${data.aws_vpc.eks.arn}"
+              "ec2:Vpc": "${module.vpc.vpc_arn}"
           }
       }
     }
