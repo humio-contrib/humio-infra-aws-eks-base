@@ -5,7 +5,6 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "3.14.0"
 
-  default_vpc_name     = local.cluster_name
   cidr                 = "10.0.0.0/16"
   azs                  = data.aws_availability_zones.available.names
   private_subnets      = ["10.0.0.0/20", "10.0.16.0/20", "10.0.32.0/20"]
@@ -13,6 +12,13 @@ module "vpc" {
   enable_nat_gateway   = true
   single_nat_gateway   = true
   enable_dns_hostnames = true
+
+  tags = merge(
+    var.additional_tags,
+    {
+      Name = local.cluster_name
+    },
+  )
 
   public_subnet_tags = {
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
