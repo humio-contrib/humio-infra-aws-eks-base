@@ -22,7 +22,7 @@ provider "aws" {
     tags = {
       Name          = local.cluster_name
       Environment   = var.environment
-      Owner         = var.owner
+      Department    = var.owner
       App           = "humio"
       DeployVersion = "0.1.0"
       ManagedBy     = "Terraform"
