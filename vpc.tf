@@ -13,13 +13,9 @@ module "vpc" {
   single_nat_gateway   = true
   enable_dns_hostnames = true
 
-  tags = merge(
-    var.additional_tags,
-    {
-      Name = local.cluster_name
-    },
-  )
-
+  tags = {
+    Name = local.cluster_name
+  }
   public_subnet_tags = {
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
     "kubernetes.io/role/elb"                      = "1"
