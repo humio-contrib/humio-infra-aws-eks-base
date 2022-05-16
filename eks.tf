@@ -6,12 +6,6 @@ data "aws_eks_cluster_auth" "cluster" {
   name = module.eks.cluster_id
 }
 
-resource "aws_security_group" "eks_msk" {
-  name   = "${local.cluster_name}-msk"
-  vpc_id = module.vpc.vpc_id
-
-}
-
 module "vpc_cni_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 4.12"
@@ -107,13 +101,11 @@ module "eks" {
     ami_type       = "AL2_x86_64"
     instance_types = [var.humio_instance_type]
 
-    # attach_cluster_primary_security_group = true
-    #vpc_security_group_ids                = [aws_security_group.eks_msk.id]
     iam_role_attach_cni_policy = true
   }
 
   eks_managed_node_groups = {
-    default = {
+    humio = {
       min_size     = var.humio_instance_count
       max_size     = var.humio_instance_count + 2
       desired_size = var.humio_instance_count
