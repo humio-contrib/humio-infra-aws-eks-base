@@ -59,6 +59,11 @@ module "eks" {
       username = "adminawsroot"
       groups   = ["system:masters"]
     },
+    {
+      userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/cs-mb"
+      username = "adminawscsmb"
+      groups   = ["system:masters"]
+    },
   ]
   aws_auth_accounts = [
     data.aws_caller_identity.current.account_id
