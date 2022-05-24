@@ -3,54 +3,25 @@ data "aws_route53_zone" "selected" {
   private_zone = var.domain_is_private
 }
 
-module "iam_assumable_role_edns" {
-  source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version                       = "4.24.0"
-  create_role                   = true
-  role_name                     = "${local.cluster_name}-edns"
-  provider_url                  = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
-  role_policy_arns              = [aws_iam_policy.alb.arn, aws_iam_policy.edns.arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:external-dns:external-dns"]
-}
+module "external_dns_role" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+
+  role_name = "${local.name}-external-dns-controller"
 
 
-resource "aws_iam_policy" "edns" {
-  name        = "${local.cluster_name}-edns"
-  description = "Allow configuration of ingress"
+  attach_external_dns_policy    = true
+  external_dns_hosted_zone_arns = [data.aws_route53_zone.selected.arn]
 
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "route53:ChangeResourceRecordSets"
-      ],
-      "Resource": [
-        "${data.aws_route53_zone.selected.arn}"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "route53:ListHostedZones",
-        "route53:ListResourceRecordSets"
-      ],
-      "Resource": [
-        "*"
-      ]
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["external-dns:external-dns"]
     }
-  ]
+  }
+  tags = local.tags
 }
-EOF
-}
-
 
 resource "helm_release" "edns" {
-  depends_on = [
-    module.iam_assumable_role_edns,
-  ]
 
   name             = "external-dns"
   namespace        = "external-dns"
@@ -59,6 +30,18 @@ resource "helm_release" "edns" {
   version          = "6.4.0"
   create_namespace = true
 
+  values = [<<EOF
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+EOF 
+  ]
+
+  set {
+    name  = "replicaCount"
+    value = 2
+  }
   set {
     name  = "serviceAccount.create"
     value = "true"
@@ -69,12 +52,12 @@ resource "helm_release" "edns" {
   }
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.iam_assumable_role_edns.iam_role_arn
+    value = module.external_dns_role.iam_role_arn
     type  = "string"
   }
   set {
     name  = "txtOwnerId"
-    value = var.deployment_name
+    value = local.name
     type  = "string"
   }
 }

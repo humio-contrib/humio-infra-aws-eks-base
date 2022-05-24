@@ -1,41 +1,38 @@
-terraform {
-  required_version = ">= 1.1.0"
-  required_providers {
-    aws = {
-      version = ">= 2.28.1"
-    }
-    kubernetes = {
-      version = "~> 2.11"
-    }
-    random = {
-      version = "~> 3.1"
-    }
-    local = {
-      version = "~> 2"
-    }
-  }
-}
+
 
 provider "aws" {
-  # ... other configuration ...
-  default_tags {
-    tags = {
-      Name          = local.cluster_name
-      Environment   = var.environment
-      Department    = var.department
-      App           = "humio"
-      DeployVersion = "0.1.0"
-      ManagedBy     = "Terraform"
-    }
-  }
+
 }
 data "aws_caller_identity" "current" {}
 data "aws_organizations_organization" "current" {}
+data "aws_partition" "current" {}
 
 
-locals {
-  cluster_name = "${var.deployment_name}-${random_string.suffix.result}"
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
 }
+
+provider "kubectl" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+}
+
+
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+  }
+}
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_id
+}
+
+
 
 resource "random_string" "suffix" {
   length  = 4
@@ -44,3 +41,19 @@ resource "random_string" "suffix" {
   upper   = false
   number  = false
 }
+
+locals {
+  name            = var.deployment_name != "" ? "${var.deployment_name}-${random_string.suffix.result}" : "humio-${(replace(replace(basename(path.cwd), "_", "-"), " ", ""))}"
+  cluster_version = "1.22"
+  partition       = data.aws_partition.current.partition
+
+  tags = {
+    Instance    = local.name
+    GithubRepo  = "humio-infra-aws-eks-base"
+    GithubOrg   = "humio-contrib"
+    App         = "humio"
+    Environment = var.environment
+    Department  = var.department
+  }
+}
+

@@ -1,18 +1,11 @@
-data "aws_eks_cluster" "cluster" {
-  name = module.eks.cluster_id
-}
+module "vpc_cni_irsa_role" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
 
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks.cluster_id
-}
+  role_name = "${local.name}-vpc-cni-controller"
 
-module "vpc_cni_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 4.12"
 
-  role_name_prefix      = "VPC-CNI-IRSA"
   attach_vpc_cni_policy = true
-  vpc_cni_enable_ipv6   = true
+  vpc_cni_enable_ipv4   = true
 
   oidc_providers = {
     main = {
@@ -20,20 +13,35 @@ module "vpc_cni_irsa" {
       namespace_service_accounts = ["kube-system:aws-node"]
     }
   }
+  tags = local.tags
+}
 
+resource "aws_kms_key" "eks" {
+  description             = "EKS Secret Encryption Key"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = local.tags
 }
 
 module "eks" {
-  source          = "terraform-aws-modules/eks/aws"
-  version         = "<19.0"
-  cluster_name    = local.cluster_name
-  cluster_version = "1.22"
-  vpc_id          = module.vpc.vpc_id
-  subnet_ids      = module.vpc.private_subnets
-  enable_irsa     = true
-
+  source                          = "terraform-aws-modules/eks/aws"
+  version                         = "<19.0"
+  cluster_name                    = local.name
+  cluster_version                 = local.cluster_version
   cluster_endpoint_private_access = true
   cluster_endpoint_public_access  = true
+
+  vpc_id                                 = module.vpc.vpc_id
+  subnet_ids                             = module.vpc.private_subnets
+  cloudwatch_log_group_retention_in_days = 7
+  cluster_enabled_log_types              = ["audit", "api", "authenticator", "controllerManager", "scheduler"]
+
+  cluster_encryption_config = [{
+    provider_key_arn = aws_kms_key.eks.arn
+    resources        = ["secrets"]
+  }]
+
 
   cluster_addons = {
     coredns = {
@@ -42,12 +50,14 @@ module "eks" {
     kube-proxy = {}
     vpc-cni = {
       resolve_conflicts        = "OVERWRITE"
-      service_account_role_arn = module.vpc_cni_irsa.iam_role_arn
+      service_account_role_arn = module.vpc_cni_irsa_role.iam_role_arn
     }
+    # aws-ebs-csi-driver = {
+    #   resolve_conflicts        = "OVERWRITE"
+    #   service_account_role_arn = module.vpc_cni_irsa_role.iam_role_arn
+    # }
   }
   manage_aws_auth_configmap = true
-
-
   aws_auth_users = [
     {
       userarn  = data.aws_caller_identity.current.arn
@@ -68,8 +78,6 @@ module "eks" {
   aws_auth_accounts = [
     data.aws_caller_identity.current.account_id
   ]
-
-  # # Extend cluster security group rules
   cluster_security_group_additional_rules = {
     egress_nodes_ephemeral_ports_tcp = {
       description                = "To node 1025-65535"
@@ -81,8 +89,16 @@ module "eks" {
     }
   }
 
-  # # Extend node-to-node security group rules
   node_security_group_additional_rules = {
+    # Control plane invoke Karpenter webhook
+    ingress_karpenter_webhook_tcp = {
+      description                   = "Control plane invoke Karpenter webhook"
+      protocol                      = "tcp"
+      from_port                     = 8443
+      to_port                       = 8443
+      type                          = "ingress"
+      source_cluster_security_group = true
+    }
     ingress_allow_access_from_control_plane = {
       type                          = "ingress"
       protocol                      = "tcp"
@@ -110,57 +126,32 @@ module "eks" {
     }
   }
 
-  eks_managed_node_group_defaults = {
-    ami_type       = "AL2_x86_64"
-    instance_types = [var.humio_instance_type]
-
-    iam_role_attach_cni_policy = true
-  }
-
   eks_managed_node_groups = {
-    humio = {
-      min_size     = var.humio_instance_count
-      max_size     = var.humio_instance_count + 2
-      desired_size = var.humio_instance_count
+    karpenter = {
+      instance_types = ["t3.medium"]
+
+      min_size     = 2
+      max_size     = 3
+      desired_size = 2
 
       labels = {
-        Environment = "Production"
-        GithubRepo  = "terraform-aws-eks"
-        GithubOrg   = "terraform-aws-modules"
+        GithubRepo  = "humio-infra-aws-eks-base"
+        GithubOrg   = "humio-contrib"
+        Environment = var.environment
+        Department  = var.department
       }
-
-
-      update_config = {
-        max_unavailable_percentage = 20 # or set `max_unavailable`
-      }
-      pre_bootstrap_user_data = templatefile("${path.module}/${var.user_data_script}", { humio_data_dir = var.humio_data_dir, humio_data_dir_owner_uuid = var.humio_data_dir_owner_uuid })
+      iam_role_additional_policies = [
+        # Required by Karpenter
+        "arn:${local.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      ]
     }
   }
 
-
-}
-
-provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
-}
-
-
-provider "helm" {
-  kubernetes {
-    host                   = data.aws_eks_cluster.cluster.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
+  tags                                       = local.tags
+  create_cluster_primary_security_group_tags = false
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = local.name
+    "aws-alb"                = true
+    #"kubernetes.io/cluster/${local.name}" = null
   }
-}
-
-
-output "cluster_id" {
-  value = module.eks.cluster_id
-}
-
-
-output "node_security_group_id" {
-  value = module.eks.node_security_group_id
 }
