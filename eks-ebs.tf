@@ -43,9 +43,12 @@ storageClasses:
     encrypted: "false"
 tolerations:
 #Any tolerations used to control pod deployment should be here
-- key: "humio.com/reservednode"
+- key: node.humio.com/reservednode
   operator: "Exists"
   effect: "NoSchedule"
+- key: node.humio.com/instance-storage
+  operator: "Exists"
+  effect: "NoSchedule"  
 EOF 
   ]
 
