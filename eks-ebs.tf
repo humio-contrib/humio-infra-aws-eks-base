@@ -41,14 +41,10 @@ storageClasses:
   reclaimPolicy: Delete
   parameters:
     encrypted: "false"
-tolerations:
-#Any tolerations used to control pod deployment should be here
-- key: node.humio.com/reservednode
-  operator: "Exists"
-  effect: "NoSchedule"
-- key: node.humio.com/instance-storage
-  operator: "Exists"
-  effect: "NoSchedule"  
+node:
+    tolerations:
+    #Any tolerations used to control pod deployment should be here
+    - operator: "Exists"
 EOF 
   ]
 
@@ -58,21 +54,3 @@ EOF
     type  = "string"
   }
 }
-
-# resource "kubectl_manifest" "aws_ebs_gp3" {
-
-#   yaml_body = <<-YAML
-# apiVersion: storage.k8s.io/v1
-# kind: StorageClass
-# metadata:
-#   annotations:
-#     storageclass.kubernetes.io/is-default-class: "true"
-#   name: gp3
-# parameters:
-#   csi.storage.k8s.io/fstype: xfs
-#   type: gp3
-# provisioner: ebs.csi.aws.com
-# reclaimPolicy: Delete
-# #volumeBindingMode: WaitForFirstConsumer  
-# YAML
-# }
