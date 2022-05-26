@@ -79,6 +79,9 @@ EOF
 
 # Workaround - https://github.com/hashicorp/terraform-provider-kubernetes/issues/1380#issuecomment-967022975
 resource "kubectl_manifest" "karpenter_provisioner" {
+  depends_on = [
+    helm_release.karpenter
+  ]
   yaml_body = <<-YAML
   apiVersion: karpenter.sh/v1alpha5
   kind: Provisioner
@@ -123,7 +126,4 @@ resource "kubectl_manifest" "karpenter_provisioner" {
     ttlSecondsAfterEmpty: 30
   YAML
 
-  depends_on = [
-    helm_release.karpenter
-  ]
 }
