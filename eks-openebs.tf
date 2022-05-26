@@ -1,7 +1,8 @@
 # Workaround - https://github.com/hashicorp/terraform-provider-kubernetes/issues/1380#issuecomment-967022975
 resource "kubectl_manifest" "open_ebs_init" {
   depends_on = [
-    module.eks
+    module.eks,
+    helm_release.openebs
   ]
   yaml_body = <<-YAML
 apiVersion: apps/v1
