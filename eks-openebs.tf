@@ -80,23 +80,22 @@ lvm-localpv:
 }
 
 
+resource "kubectl_manifest" "storageclass_openebs_lvmpv" {
+  yaml_body = <<-YAML
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-lvmpv
+allowVolumeExpansion: true
+parameters:
+  storage: "lvm"
+  volgroup: "lvmvg"
+provisioner: local.csi.openebs.io
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+  YAML
 
-resource "kubernetes_manifest" "storageclass_openebs_lvmpv" {
   depends_on = [
     helm_release.openebs
   ]
-  manifest = {
-    "apiVersion" = "storage.k8s.io/v1"
-    "kind"       = "StorageClass"
-    "metadata" = {
-      "name" = "openebs-lvmpv"
-    }
-    "parameters" = {
-      "storage"  = "lvm"
-      "volgroup" = "instancestore"
-    }
-    "provisioner"       = "local.csi.openebs.io"
-    "volumeBindingMode" = "WaitForFirstConsumer"
-    "reclaimPolicy"     = "Delete"
-  }
 }
