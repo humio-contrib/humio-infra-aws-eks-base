@@ -128,11 +128,11 @@ module "eks" {
 
   eks_managed_node_groups = {
     karpenter = {
-      instance_types = ["t3.medium"]
+      instance_types = ["c6i.xlarge"]
 
       min_size     = 2
-      max_size     = 3
-      desired_size = 2
+      max_size     = 5
+      desired_size = 3
 
       labels = {
         GithubRepo  = "humio-infra-aws-eks-base"

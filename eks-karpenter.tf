@@ -90,19 +90,19 @@ resource "kubectl_manifest" "karpenter_provisioner" {
       - key: node.kubernetes.io/instance-type
         operator: In
         values: 
-        - m6i.large
+        # - m6i.large
         - m6i.xlarge
-        - m6a.large
+        # - m6a.large
         - m6a.xlarge
-        - m5.large
+        # - m5.large
         - m5.xlarge
-        - m5a.large
+        # - m5a.large
         - m5a.xlarge
-        - m5n.large
+        # - m5n.large
         - m5n.xlarge
-        - m5zn.large
+        # - m5zn.large
         - m5zn.xlarge
-        - m4.large
+        # - m4.large
         - m4.xlarge
 
 
