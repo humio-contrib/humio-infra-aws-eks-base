@@ -16,6 +16,9 @@ module "aws_ebs" {
   tags = local.tags
 }
 resource "helm_release" "ebs-controller" {
+  depends_on = [
+    module.eks
+  ]
 
   name             = "aws-ebs-csi-driver"
   namespace        = "kube-system"

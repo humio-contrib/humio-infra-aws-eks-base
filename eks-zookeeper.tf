@@ -1,4 +1,7 @@
 resource "helm_release" "zk" {
+  depends_on = [
+    module.eks
+  ]
 
   name             = "zookeeper-operator"
   namespace        = "zookeeper-operator"

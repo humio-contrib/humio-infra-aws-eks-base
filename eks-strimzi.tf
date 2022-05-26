@@ -1,5 +1,7 @@
 resource "helm_release" "strimzi" {
-
+  depends_on = [
+    module.eks
+  ]
   name             = "strimzi-kafka-operator"
   namespace        = "strimzi-operator"
   repository       = "https://strimzi.io/charts/"

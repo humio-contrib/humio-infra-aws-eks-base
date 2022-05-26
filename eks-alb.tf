@@ -1,4 +1,7 @@
 module "alb_role" {
+  depends_on = [
+    module.eks
+  ]
   source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
 
   role_name = "${local.name}-aws-alb-controller"

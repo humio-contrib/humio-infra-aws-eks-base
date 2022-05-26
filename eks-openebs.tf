@@ -56,7 +56,8 @@ YAML
 
 resource "helm_release" "openebs" {
   depends_on = [
-    kubectl_manifest.open_ebs_init
+    kubectl_manifest.open_ebs_init,
+    module.eks
   ]
   name             = "openebs"
   namespace        = "openebs"

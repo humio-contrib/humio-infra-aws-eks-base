@@ -31,6 +31,9 @@ resource "aws_iam_instance_profile" "karpenter" {
 }
 
 resource "helm_release" "karpenter" {
+  depends_on = [
+    module.eks
+  ]
   namespace        = "karpenter"
   create_namespace = true
 

@@ -22,6 +22,9 @@ module "external_dns_role" {
 }
 
 resource "helm_release" "edns" {
+  depends_on = [
+    module.eks
+  ]
 
   name             = "external-dns"
   namespace        = "external-dns"
