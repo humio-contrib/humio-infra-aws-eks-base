@@ -92,7 +92,7 @@ metadata:
 allowVolumeExpansion: true
 parameters:
   storage: "lvm"
-  volgroup: "lvmvg"
+  volgroup: "instancestore"
 provisioner: local.csi.openebs.io
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
