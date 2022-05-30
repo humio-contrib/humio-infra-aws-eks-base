@@ -1,8 +1,5 @@
 
 resource "helm_release" "humio-operator" {
-  depends_on = [
-    module.eks
-  ]
 
   name             = "humio-operator"
   namespace        = "humio-operator"

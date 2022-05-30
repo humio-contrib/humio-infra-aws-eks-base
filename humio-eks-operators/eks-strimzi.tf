@@ -1,13 +1,18 @@
+resource "kubernetes_namespace" "strimzi" {
+  metadata {
+    name = "strimzi-kafka-operator"
+  }
+}
 resource "helm_release" "strimzi" {
   depends_on = [
-    module.eks
+    module.aws_ebs
   ]
   name             = "strimzi-kafka-operator"
-  namespace        = "strimzi-operator"
+  namespace        = kubernetes_namespace.strimzi.metadata[0].name
   repository       = "https://strimzi.io/charts/"
   chart            = "strimzi-kafka-operator"
   version          = "0.29.0"
-  create_namespace = true
+  create_namespace = false
 
   values = [<<EOF
 topologySpreadConstraints:

@@ -1,21 +1,25 @@
+resource "kubernetes_namespace" "alb_manager" {
+  metadata {
+    name = "alb-manager"
+  }
+}
+
 module "alb_role" {
-  depends_on = [
-    module.eks
-  ]
+
   source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
 
-  role_name = "${local.name}-aws-alb-controller"
+  role_name = "${var.name}-aws-alb-controller"
 
 
   attach_load_balancer_controller_policy = true
 
   oidc_providers = {
     main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["alb-manager:aws-load-balancer-controller"]
+      provider_arn               = var.cluster_provider_arn
+      namespace_service_accounts = ["${kubernetes_namespace.alb_manager.metadata[0].name}:aws-load-balancer-controller"]
     }
   }
-  tags = local.tags
+  tags = var.tags
 }
 
 
@@ -24,11 +28,11 @@ resource "helm_release" "alb" {
     helm_release.cert-manager
   ]
   name             = "aws-load-balancer-controller"
-  namespace        = "alb-manager"
+  namespace        = kubernetes_namespace.alb_manager.metadata[0].name
   repository       = "https://aws.github.io/eks-charts"
   chart            = "aws-load-balancer-controller"
   version          = "1.4.1"
-  create_namespace = true
+  create_namespace = false
 
   values = [<<EOF
 topologySpreadConstraints:
@@ -40,7 +44,7 @@ EOF
 
   set {
     name  = "clusterName"
-    value = local.name
+    value = var.name
   }
   set {
     name  = "enableCertManager"

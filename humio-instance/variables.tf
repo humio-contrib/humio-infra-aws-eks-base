@@ -1,44 +1,53 @@
 variable "region" {
-  type    = string
-  default = "us-east-1"
+  type=string
 }
-variable "environment" {
-  type    = string
-  default = "Production"
+variable "name" {
+  type = string
 }
-variable "department" {
-  type    = string
-  default = "humio"
+variable "tags" {
+  type = map(string)
+}
+variable "cluster_id" {
+  type = string
+}
+variable "cluster_endpoint" {
+  type = string
+}
+variable "cluster_certificate_authority_data" {
+  type = string
 }
 
+variable "cluster_provider_arn" {
+  type = string
+}
 
 variable "domain_name" {
   type = string
 }
+
 variable "domain_is_private" {
-  type    = bool
-  default = false
+  type = bool
 }
 
 variable "humio_namespace" {
-  type    = string
-  default = "humio"
+  type = string
 }
 variable "humio_instance" {
-  type    = string
-  default = "humio"
+  type = string
+}
+
+variable "humio_logs_bucket_id" {
+  type = string
 }
 
 variable "humio_bucket_client_key" {
-  type    = string
-  default = "D3BeRhYCexFPt0Q5Uceb49paCpjz2p1KSFNXEX/DgP4Jz2uPpXSl54qXnBUnsKhIsRUCGNDoambpgK7Yoh26pg=="
+  type = string
 }
 
 variable "humio_license" {
   type      = string
   sensitive = true
 }
-
 variable "sso_saml_idp_cert" {
   type = string
 }

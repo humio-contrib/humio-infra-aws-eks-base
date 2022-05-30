@@ -1,3 +1,9 @@
+resource "kubernetes_namespace" "edns" {
+  metadata {
+    name = "external-dns"
+  }
+}
+
 data "aws_route53_zone" "selected" {
   name         = var.domain_name
   private_zone = var.domain_is_private
@@ -6,7 +12,7 @@ data "aws_route53_zone" "selected" {
 module "external_dns_role" {
   source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
 
-  role_name = "${local.name}-external-dns-controller"
+  role_name = "${var.name}-external-dns-controller"
 
 
   attach_external_dns_policy    = true
@@ -14,24 +20,21 @@ module "external_dns_role" {
 
   oidc_providers = {
     main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["external-dns:external-dns"]
+      provider_arn               = var.cluster_provider_arn
+      namespace_service_accounts = ["${kubernetes_namespace.edns.metadata[0].name}:external-dns"]
     }
   }
-  tags = local.tags
+  tags = var.tags
 }
 
 resource "helm_release" "edns" {
-  depends_on = [
-    module.eks
-  ]
 
   name             = "external-dns"
-  namespace        = "external-dns"
+  namespace        = kubernetes_namespace.edns.metadata[0].name
   repository       = "https://charts.bitnami.com/bitnami"
   chart            = "external-dns"
   version          = "6.4.0"
-  create_namespace = true
+  create_namespace = false
 
   values = [<<EOF
 topologySpreadConstraints:
@@ -60,7 +63,7 @@ EOF
   }
   set {
     name  = "txtOwnerId"
-    value = local.name
+    value = var.name
     type  = "string"
   }
 }

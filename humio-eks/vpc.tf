@@ -5,7 +5,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 3.14.0"
 
-  name = local.name
+  name = var.name
   cidr = "10.0.0.0/16"
 
   azs                    = data.aws_availability_zones.available.names
@@ -17,16 +17,16 @@ module "vpc" {
   one_nat_gateway_per_az = false
 
   public_subnet_tags = {
-    "kubernetes.io/cluster/${local.name}" = "shared"
-    "kubernetes.io/role/elb"              = "1"
-    "karpenter.sh/discovery"              = local.name
+    "kubernetes.io/cluster/${var.name}" = "shared"
+    "kubernetes.io/role/elb"            = "1"
+    "karpenter.sh/discovery"            = var.name
   }
 
   private_subnet_tags = {
-    "kubernetes.io/cluster/${local.name}" = "shared"
-    "kubernetes.io/role/internal-elb"     = "1"
-    "karpenter.sh/discovery"              = local.name
+    "kubernetes.io/cluster/${var.name}" = "shared"
+    "kubernetes.io/role/internal-elb"   = "1"
+    "karpenter.sh/discovery"            = var.name
   }
 
-  tags = local.tags
+  tags = var.tags
 }

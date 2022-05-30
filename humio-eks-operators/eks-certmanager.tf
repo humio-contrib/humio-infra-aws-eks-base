@@ -1,10 +1,15 @@
+resource "kubernetes_namespace" "cert_manager" {
+  metadata {
+    name = "cert-manager"
+  }
+}
+
+
 module "cert_manager_role" {
-  depends_on = [
-    module.eks
-  ]
+
   source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
 
-  role_name = "${local.name}-cert-manager-controller"
+  role_name = "${var.name}-cert-manager-controller"
 
 
   attach_cert_manager_policy    = true
@@ -12,21 +17,21 @@ module "cert_manager_role" {
 
   oidc_providers = {
     main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["cert-manager:cert-manager"]
+      provider_arn               = var.cluster_provider_arn
+      namespace_service_accounts = ["${kubernetes_namespace.cert_manager.metadata[0].name}:cert-manager"]
     }
   }
-  tags = local.tags
+  tags = var.tags
 }
 
 resource "helm_release" "cert-manager" {
 
   name             = "cert-manager"
-  namespace        = "cert-manager"
+  namespace        = kubernetes_namespace.cert_manager.metadata[0].name
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
   version          = "1.8.0"
-  create_namespace = true
+  create_namespace = false
 
   values = [<<EOF
 topologySpreadConstraints:

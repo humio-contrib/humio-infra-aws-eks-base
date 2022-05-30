@@ -1,27 +1,30 @@
+resource "kubernetes_namespace" "awsebs" {
+  metadata {
+    name = "awsebs-controller"
+  }
+}
+
 
 module "aws_ebs" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 4.21.1"
 
-  role_name             = "${local.name}-aws-ebs"
+  role_name             = "${var.name}-aws-ebs"
   attach_ebs_csi_policy = true
 
 
   oidc_providers = {
     ex = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
+      provider_arn               = var.cluster_provider_arn
+      namespace_service_accounts = ["${kubernetes_namespace.awsebs.metadata[0].name}:ebs-csi-controller-sa"]
     }
   }
-  tags = local.tags
+  tags = var.tags
 }
 resource "helm_release" "ebs-controller" {
-  depends_on = [
-    module.eks
-  ]
 
   name             = "aws-ebs-csi-driver"
-  namespace        = "kube-system"
+  namespace        = kubernetes_namespace.awsebs.metadata[0].name
   repository       = "https://kubernetes-sigs.github.io/aws-ebs-csi-driver"
   chart            = "aws-ebs-csi-driver"
   version          = "2.6.8"

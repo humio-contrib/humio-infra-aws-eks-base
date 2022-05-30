@@ -1,8 +1,56 @@
 # Workaround - https://github.com/hashicorp/terraform-provider-kubernetes/issues/1380#issuecomment-967022975
+resource "kubernetes_namespace" "openebs" {
+  metadata {
+    name = "openebs"
+  }
+}
+resource "helm_release" "openebs" {
+  name             = "openebs"
+  namespace        = kubernetes_namespace.openebs.metadata[0].name
+  repository       = "https://openebs.github.io/charts"
+  chart            = "openebs"
+  version          = "3.2.0"
+  create_namespace = false
+
+  values = [<<EOF
+lvm-localpv:
+    enabled: true
+    lvmNode:
+        nodeSelector:
+            beta.humio.com/instance-storage: "true"
+        tolerations:
+        - operator: "Exists"
+    EOF
+  ]
+
+}
+
+
+resource "kubectl_manifest" "storageclass_openebs_lvmpv" {
+  depends_on = [
+    helm_release.openebs
+  ]
+  yaml_body = <<-YAML
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-lvmpv
+allowVolumeExpansion: true
+parameters:
+  storage: "lvm"
+  volgroup: "instancestore"
+provisioner: local.csi.openebs.io
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+  YAML
+
+}
+
+
 resource "kubectl_manifest" "open_ebs_init" {
   depends_on = [
-    module.eks,
-    helm_release.openebs
+    helm_release.openebs,
+    kubernetes_namespace.openebs
   ]
   yaml_body = <<-YAML
 apiVersion: apps/v1
@@ -56,49 +104,4 @@ spec:
               cpu: 200m
               memory: 256Mi
 YAML
-}
-
-resource "helm_release" "openebs" {
-  depends_on = [
-    module.eks
-  ]
-  name             = "openebs"
-  namespace        = "openebs"
-  repository       = "https://openebs.github.io/charts"
-  chart            = "openebs"
-  version          = "3.2.0"
-  create_namespace = true
-
-  values = [<<EOF
-lvm-localpv:
-    enabled: true
-    lvmNode:
-        nodeSelector:
-            beta.humio.com/instance-storage: "true"
-        tolerations:
-        - operator: "Exists"
-    EOF
-  ]
-
-}
-
-
-resource "kubectl_manifest" "storageclass_openebs_lvmpv" {
-  yaml_body = <<-YAML
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: openebs-lvmpv
-allowVolumeExpansion: true
-parameters:
-  storage: "lvm"
-  volgroup: "instancestore"
-provisioner: local.csi.openebs.io
-reclaimPolicy: Delete
-volumeBindingMode: WaitForFirstConsumer
-  YAML
-
-  depends_on = [
-    helm_release.openebs
-  ]
 }

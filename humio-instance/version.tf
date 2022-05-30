@@ -8,11 +8,8 @@ terraform {
       source  = "gavinbunney/kubectl"
       version = ">= 1.14"
     }
-        kubernetes = {
+    kubernetes = {
       version = "~> 2.11"
-    }
-    random = {
-      version = "~> 3.1"
     }
     local = {
       version = "~> 2"

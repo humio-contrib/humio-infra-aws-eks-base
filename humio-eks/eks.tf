@@ -1,7 +1,7 @@
 module "vpc_cni_irsa_role" {
   source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
 
-  role_name = "${local.name}-vpc-cni-controller"
+  role_name = "${var.name}-vpc-cni-controller"
 
 
   attach_vpc_cni_policy = true
@@ -13,7 +13,7 @@ module "vpc_cni_irsa_role" {
       namespace_service_accounts = ["kube-system:aws-node"]
     }
   }
-  tags = local.tags
+  tags = var.tags
 }
 
 resource "aws_kms_key" "eks" {
@@ -21,14 +21,14 @@ resource "aws_kms_key" "eks" {
   deletion_window_in_days = 7
   enable_key_rotation     = true
 
-  tags = local.tags
+  tags = var.tags
 }
 
 module "eks" {
   source                          = "terraform-aws-modules/eks/aws"
   version                         = "<19.0"
-  cluster_name                    = local.name
-  cluster_version                 = local.cluster_version
+  cluster_name                    = var.name
+  cluster_version                 = var.k8s_version
   cluster_endpoint_private_access = true
   cluster_endpoint_public_access  = true
 
@@ -56,22 +56,24 @@ module "eks" {
     #   resolve_conflicts        = "OVERWRITE"
     #   service_account_role_arn = module.vpc_cni_irsa_role.iam_role_arn
     # }
+  
   }
+  
   manage_aws_auth_configmap = true
   aws_auth_users = [
     {
       userarn  = data.aws_caller_identity.current.arn
-      username = "admintf"
+      username = "admin-caller"
       groups   = ["system:masters"]
     },
     {
       userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-      username = "adminawsroot"
+      username = "admin-aws-root"
       groups   = ["system:masters"]
     },
     {
-      userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/cs-mb"
-      username = "adminawscsmb"
+      userarn  = var.aws_admin_arn
+      username = "admin-user-role"
       groups   = ["system:masters"]
     },
   ]
@@ -128,30 +130,24 @@ module "eks" {
 
   eks_managed_node_groups = {
     karpenter = {
-      instance_types = ["c6i.xlarge"]
+      instance_types = var.eks_general_instance_type
 
-      min_size     = 2
-      max_size     = 5
-      desired_size = 3
+      min_size     = var.eks_general_min_size
+      max_size     = var.eks_general_max_size
+      desired_size = var.eks_general_desired_size
 
-      labels = {
-        GithubRepo  = "humio-infra-aws-eks-base"
-        GithubOrg   = "humio-contrib"
-        Environment = var.environment
-        Department  = var.department
-      }
+      labels = var.tags
       iam_role_additional_policies = [
         # Required by Karpenter
-        "arn:${local.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
       ]
     }
   }
 
-  tags                                       = local.tags
+  tags                                       = var.tags
   create_cluster_primary_security_group_tags = false
   node_security_group_tags = {
-    "karpenter.sh/discovery" = local.name
+    "karpenter.sh/discovery" = var.name
     "aws-alb"                = true
-    #"kubernetes.io/cluster/${local.name}" = null
   }
 }
