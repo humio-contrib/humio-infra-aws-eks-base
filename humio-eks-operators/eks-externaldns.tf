@@ -33,7 +33,7 @@ resource "helm_release" "edns" {
   namespace        = kubernetes_namespace.edns.metadata[0].name
   repository       = "https://charts.bitnami.com/bitnami"
   chart            = "external-dns"
-  version          = "6.4.0"
+  version          = "6.5.1"
   create_namespace = false
 
   values = [<<EOF

@@ -40,4 +40,15 @@ data "aws_iam_policy_document" "bucket_policy" {
       "arn:aws:s3:::${aws_s3_bucket.humio.id}/*",
     ]
   }
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt",
+      "kms:GenerateDataKey"
+    ]
+    resources = [
+      aws_kms_key.humio.arn
+    ]
+
+  }
 }
