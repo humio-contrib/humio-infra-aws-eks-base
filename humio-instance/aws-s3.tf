@@ -23,16 +23,48 @@ resource "aws_kms_key" "humio" {
   tags                    = var.tags
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "humio" {
-  bucket = aws_s3_bucket.humio.bucket
+# resource "aws_s3_bucket_server_side_encryption_configuration" "humio" {
+#   bucket = aws_s3_bucket.humio.bucket
+
+#   rule {
+#     apply_server_side_encryption_by_default {
+#       kms_master_key_id = aws_kms_key.humio.arn
+#       sse_algorithm     = "aws:kms"
+#     }
+#   }
+# }
+
+resource "aws_s3_bucket_lifecycle_configuration" "humio" {
+  bucket = aws_s3_bucket.humio.id
 
   rule {
-    apply_server_side_encryption_by_default {
-      kms_master_key_id = aws_kms_key.humio.arn
-      sse_algorithm     = "aws:kms"
+    id = "1-main"
+
+    filter {
+      prefix = "/"
     }
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+    status = "Enabled"
+  }
+  rule {
+    id = "2-tmp"
+
+    filter {
+      prefix = "tmp/"
+    }
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+    expiration {
+      days = 3
+    }
+    status = "Enabled"
   }
 }
+
+
 resource "aws_s3_bucket_versioning" "humio" {
   bucket = aws_s3_bucket.humio.id
   versioning_configuration {

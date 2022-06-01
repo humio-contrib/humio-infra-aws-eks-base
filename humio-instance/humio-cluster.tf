@@ -64,6 +64,10 @@ spec:
     value: "true"
   - name: S3_STORAGE_PREFERRED_COPY_SOURCE
     value: "true"
+  # - name: "BUCKET_STORAGE_IGNORE_ETAG_AFTER_UPLOAD"
+  #   value: "true"
+  # - name: "BUCKET_STORAGE_IGNORE_ETAG_UPLOAD"
+  #   value: "true"
   - name: AUTHENTICATION_METHOD
     value: saml
   - name: AUTO_CREATE_USER_ON_SUCCESSFUL_LOGIN
